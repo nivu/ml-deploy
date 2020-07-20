@@ -3,7 +3,15 @@ from flask import Flask, request, jsonify, render_template
 import pickle
 
 app = Flask(__name__)
+
+# load the model from disk
+
+# REg
 model = pickle.load(open('model.pkl', 'rb'))
+
+# Classification
+clf = pickle.load(open('nlp_model.pkl', 'rb'))
+cv = pickle.load(open('tranform.pkl', 'rb'))
 
 
 @app.route('/')
@@ -11,7 +19,12 @@ def home():
     return render_template('index.html')
 
 
-@app.route('/predict', methods=['POST', 'GET'])
+@app.route('/email')
+def email():
+    return render_template('home.html')
+
+
+@app.route('/predict', methods=['POST'])
 def predict():
     '''
     For rendering results on HTML GUI
@@ -31,6 +44,17 @@ def predict():
         return jsonify({'salary': output})
 
     return render_template('index.html', prediction_text='Employee Salary should be $ {}'.format(output))
+
+
+@app.route('/predict_email', methods=['POST'])
+def predict_email():
+
+    if request.method == 'POST':
+        message = request.form['message']
+        data = [message]
+        vect = cv.transform(data).toarray()
+        my_prediction = clf.predict(vect)
+    return render_template('result.html', prediction=my_prediction)
 
 
 if __name__ == "__main__":
