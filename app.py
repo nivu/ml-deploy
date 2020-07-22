@@ -1,6 +1,7 @@
 import numpy as np
 from flask import Flask, request, jsonify, render_template
 import pickle
+import pandas as pd
 
 app = Flask(__name__)
 
@@ -14,9 +15,12 @@ clf = pickle.load(open('nlp_model.pkl', 'rb'))
 cv = pickle.load(open('tranform.pkl', 'rb'))
 
 # iris classification
-
 iris_model = pickle.load(open('models/iris-model.pkl', 'rb'))
 iris_target = pickle.load(open('models/target_names.pkl', 'rb'))
+
+# bank XGBoost
+
+bank_xgb = pickle.load(open('models/bank_xg_pipe.pkl', 'rb'))
 
 
 @app.route('/')
@@ -88,6 +92,28 @@ def predict_email():
         vect = cv.transform(data).toarray()
         my_prediction = clf.predict(vect)
     return render_template('result.html', prediction=my_prediction)
+
+
+@app.route('/bank', methods=['POST'])
+def predict_bank():
+
+    format = request.args.get('format')
+
+    int_features = [str(x) for x in request.form.values()]
+    final_features = [np.array(int_features)]
+    print(final_features)
+    df = pd.DataFrame(final_features, columns=['age', 'job', 'marital', 'education', 'loan', 'duration', 'campaign',
+                                               'employee_variation_rate', 'consumer_price_index',
+                                               'consumer_confidence_index', 'euribor', 'num_of_employees'])
+    prediction = bank_xgb.predict(df)
+    print(prediction)
+
+    output = prediction[0]
+
+    if(format == 'json'):
+        return jsonify({'bank': int(output)})
+
+    return render_template('index.html', prediction_text='Employee Salary should be $ {}'.format(output))
 
 
 if __name__ == "__main__":
